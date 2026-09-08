@@ -1,0 +1,22 @@
+# docker-compose.yml
+services:
+  app:
+    build: .
+    container_name: blog_app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.production
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - blog_net
+    mem_limit: 512m
+    cpus: 1.0
+
+networks:
+  blog_net:
+    driver: bridge

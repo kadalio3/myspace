@@ -1,0 +1,314 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model User {
+  id                  String         @id @default(uuid())
+  name                String?
+  email               String?        @unique
+  passwordHash        String?
+  avatarUrl           String?
+  bio                 String?        @db.Text
+  role                Role           @default(GUEST)
+  tokenVersion        Int            @default(1)
+  passwordResetToken  String?
+  passwordResetExpiry DateTime?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  deletedAt           DateTime?
+  emailVerified       DateTime?
+  image               String?
+  accounts            Account[]
+  activityLogs        ActivityLog[]
+  comments            Comment[]
+  likes               Like[]
+  media               Media[]
+  mediaComments       MediaComment[]
+  mediaLikes          MediaLike[]
+  posts               Post[]
+  sessions            Session[]
+  stories             Story[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String   @id @default(uuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?  @db.Text
+  access_token      String?  @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?  @db.Text
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId], map: "accounts_userId_fkey")
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "sessions_userId_fkey")
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model Post {
+  id             String         @id @default(uuid())
+  userId         String
+  title          String
+  content        String         @db.LongText
+  slug           String         @unique
+  visibility     Visibility     @default(PUBLIC)
+  status         PostStatus     @default(DRAFT)
+  coverImageUrl  String?
+  passwordHash   String?
+  publishedAt    DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  deletedAt      DateTime?
+  category       String         @default("Teknologi")
+  comments       Comment[]
+  likes          Like[]
+  media          Media[]
+  postCategories PostCategory[]
+  user           User           @relation(fields: [userId], references: [id])
+
+  @@index([status, visibility, createdAt])
+  @@index([category])
+  @@index([userId], map: "posts_userId_fkey")
+  @@map("posts")
+}
+
+model Story {
+  id         String     @id @default(uuid())
+  userId     String
+  caption    String?    @db.Text
+  visibility Visibility @default(PUBLIC)
+  expiresAt  DateTime
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  deletedAt  DateTime?
+  bgStyle    String?
+  likes      Like[]
+  media      Media[]
+  user       User       @relation(fields: [userId], references: [id])
+
+  @@index([expiresAt])
+  @@index([userId], map: "stories_userId_fkey")
+  @@map("stories")
+}
+
+model Category {
+  id             String         @id @default(uuid())
+  name           String         @unique
+  slug           String         @unique
+  color          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  postCategories PostCategory[]
+
+  @@map("categories")
+}
+
+model PostCategory {
+  postId     String
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  post       Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([postId, categoryId])
+  @@index([categoryId], map: "post_categories_categoryId_fkey")
+  @@map("post_categories")
+}
+
+model Comment {
+  id         String    @id @default(uuid())
+  postId     String
+  userId     String?
+  parentId   String?
+  content    String    @db.Text
+  guestName  String?
+  guestEmail String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+  parent     Comment?  @relation("CommentToComment", fields: [parentId], references: [id], onDelete: Cascade)
+  replies    Comment[] @relation("CommentToComment")
+  post       Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user       User?     @relation(fields: [userId], references: [id])
+
+  @@index([postId, createdAt])
+  @@index([userId])
+  @@index([parentId], map: "comments_parentId_fkey")
+  @@map("comments")
+}
+
+model Like {
+  id         String   @id @default(uuid())
+  userId     String?
+  guestToken String?
+  ipAddress  String?
+  postId     String?
+  storyId    String?
+  createdAt  DateTime @default(now())
+  post       Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  story      Story?   @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user       User?    @relation(fields: [userId], references: [id])
+
+  @@unique([guestToken, postId])
+  @@unique([guestToken, storyId])
+  @@index([postId])
+  @@index([storyId])
+  @@index([userId])
+  @@map("likes")
+}
+
+model Media {
+  id            String         @id @default(uuid())
+  userId        String
+  postId        String?
+  storyId       String?
+  type          MediaType
+  url           String
+  publicId      String
+  mimeType      String
+  sizeBytes     Int
+  width         Int?
+  height        Int?
+  sortOrder     Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  caption       String?        @db.Text
+  post          Post?          @relation(fields: [postId], references: [id])
+  story         Story?         @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id])
+  mediaComments MediaComment[]
+  mediaLikes    MediaLike[]
+
+  @@index([userId, createdAt])
+  @@index([postId], map: "media_postId_fkey")
+  @@index([storyId], map: "media_storyId_fkey")
+  @@map("media")
+}
+
+model ActivityLog {
+  id          String   @id @default(uuid())
+  type        LogType  @default(ACTION)
+  action      String
+  title       String
+  description String?  @db.Text
+  userId      String?
+  guestName   String?
+  ipAddress   String?
+  path        String?
+  createdAt   DateTime @default(now())
+  user        User?    @relation(fields: [userId], references: [id])
+
+  @@index([type, createdAt])
+  @@index([action, createdAt])
+  @@index([userId, createdAt])
+  @@map("activity_logs")
+}
+
+model MediaComment {
+  id         String   @id @default(uuid())
+  mediaId    String
+  userId     String?
+  content    String   @db.Text
+  guestName  String?
+  guestEmail String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  media      Media    @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  user       User?    @relation(fields: [userId], references: [id])
+
+  @@index([mediaId, createdAt])
+  @@index([userId])
+  @@map("media_comments")
+}
+
+model MediaLike {
+  id         String   @id @default(uuid())
+  mediaId    String
+  userId     String?
+  guestToken String?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+  media      Media    @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  user       User?    @relation(fields: [userId], references: [id])
+
+  @@unique([guestToken, mediaId])
+  @@index([mediaId])
+  @@index([userId])
+  @@map("media_likes")
+}
+
+model SiteSetting {
+  id                String   @id @default("global")
+  siteTitle         String   @default("Kadalio — Catatan & Dokumentasi Web")
+  siteDescription   String   @db.Text
+  siteKeywords      String   @db.Text
+  googleAnalyticsId String?  @default("")
+  googleAdsenseId   String?  @default("")
+  adsenseAutoAds    Boolean  @default(true)
+  updatedAt         DateTime @updatedAt
+
+  @@map("site_settings")
+}
+
+enum Role {
+  OWNER
+  GUEST
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum Visibility {
+  PUBLIC
+  PRIVATE
+  PASSWORD_PROTECTED
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+enum LogType {
+  TRAFFIC
+  ACTION
+  ENGAGEMENT
+  SECURITY
+}
