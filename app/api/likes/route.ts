@@ -4,9 +4,20 @@ import { auth } from '@/auth';
 import { cookies } from 'next/headers';
 import crypto from 'crypto';
 import { logActivity } from '@/lib/logger';
+import { rateLimit } from '@/lib/rate-limit';
 
 export async function POST(req: NextRequest) {
   try {
+    // Rate limit: max 30 likes per minute per IP
+    const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+    const { success } = rateLimit(`like:${ip}`, 30, 60_000);
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Terlalu banyak request. Silakan coba lagi dalam 1 menit.' },
+        { status: 429 }
+      );
+    }
+
     const { postId } = await req.json();
     if (!postId) return NextResponse.json({ error: 'Post ID required' }, { status: 400 });
 

@@ -50,7 +50,13 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
         where: { parentId: null },
         orderBy: { createdAt: 'desc' },
         include: {
-          user: { select: { name: true, avatarUrl: true, role: true } }
+          user: { select: { name: true, avatarUrl: true, role: true } },
+          replies: {
+            orderBy: { createdAt: 'asc' },
+            include: {
+              user: { select: { name: true, avatarUrl: true, role: true } }
+            }
+          }
         }
       }
     }
@@ -160,7 +166,11 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
         postId={post.id} 
         initialComments={post.comments.map((c: any) => ({
           ...c,
-          createdAt: c.createdAt.toISOString()
+          createdAt: c.createdAt.toISOString(),
+          replies: (c.replies || []).map((r: any) => ({
+            ...r,
+            createdAt: r.createdAt.toISOString()
+          }))
         }))} 
         isAuthenticated={!!session?.user} 
       />

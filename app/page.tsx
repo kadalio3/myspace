@@ -38,6 +38,12 @@ export default async function Home() {
       }
     }),
     prisma.media.findMany({
+      where: {
+        OR: [
+          { postId: null },
+          { post: { visibility: 'PUBLIC' } }
+        ]
+      },
       orderBy: { createdAt: 'desc' },
       take: 8,
       select: {

@@ -18,6 +18,12 @@ export default async function GalleryPage() {
   // Fetch all media and owner profile
   const [media, owner] = await Promise.all([
     prisma.media.findMany({
+      where: {
+        OR: [
+          { postId: null },
+          { post: { visibility: 'PUBLIC' } }
+        ]
+      },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
